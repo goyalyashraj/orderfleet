@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # MySQL Container for isolated multi-service databases (Optional if running native MySQL on host)
+  mysql:
+    image: mysql:8.4
+    container_name: order_platform_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3307:3306" # Mapped to 3307 to avoid port clash if host MySQL is active
+    volumes:
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - mysql_data:/var/lib/mysql
+    networks:
+      - platform-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  platform-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

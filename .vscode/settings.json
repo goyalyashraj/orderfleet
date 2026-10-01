@@ -1,0 +1,11 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.compile.nullAnalysis.mode": "automatic",
+  "maven.terminal.useJavaHome": true,
+  "java.jdt.ls.vmargs": "-XX:+UseZGC -Xmx2G",
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/target": true
+  }
+}
