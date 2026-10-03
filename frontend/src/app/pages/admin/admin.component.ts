@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CatalogService, CreateProductDto } from '../../services/catalog.service';
 import { OrderService } from '../../services/order.service';
 import { AuthService } from '../../services/auth.service';
@@ -32,17 +32,20 @@ type AdminTab = 'orders' | 'users' | 'inventory' | 'site-view';
           @if (activeTab() === 'inventory') {
             <button class="btn btn-amazon-primary d-flex align-items-center gap-2" (click)="showAddProductModal.set(true)">
               <i class="bi bi-plus-circle-fill"></i>
-              <span>Add New Product SKU</span>
+              <span>Add SKU</span>
             </button>
-          } @else if (activeTab() === 'site-view') {
-            <a routerLink="/catalog" class="btn btn-outline-info d-flex align-items-center gap-2" target="_blank">
-              <i class="bi bi-box-arrow-up-right"></i>
-              <span>Open Customer Storefront</span>
-            </a>
           }
+          <a routerLink="/catalog" class="btn btn-glass d-flex align-items-center gap-2">
+            <i class="bi bi-shop text-warning"></i>
+            <span>Customer Storefront</span>
+          </a>
           <button class="btn btn-glass d-flex align-items-center gap-2" (click)="refreshAllData()">
             <i class="bi bi-arrow-clockwise"></i>
-            <span>Refresh Data</span>
+            <span>Refresh</span>
+          </button>
+          <button class="btn btn-outline-danger d-flex align-items-center gap-2" (click)="logout()">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Sign Out</span>
           </button>
         </div>
       </div>
@@ -590,6 +593,7 @@ export class AdminComponent implements OnInit {
   private orderService = inject(OrderService);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private router = inject(Router);
 
   // Active Tab
   activeTab = signal<AdminTab>('orders');
@@ -789,5 +793,10 @@ export class AdminComponent implements OnInit {
         this.toastService.error('Deactivation Failed', err.error?.message || 'Failed to deactivate product.');
       }
     });
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }
