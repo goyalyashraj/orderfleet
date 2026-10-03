@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeliveryService } from '../../services/delivery.service';
+import { ToastService } from '../../services/toast.service';
 import { DeliveryPartner, Delivery } from '../../models/delivery.model';
 
 @Component({
@@ -47,13 +48,7 @@ import { DeliveryPartner, Delivery } from '../../models/delivery.model';
         }
       </div>
 
-      <!-- Alerts -->
-      @if (statusMessage()) {
-        <div class="alert alert-info glass-panel border-info text-info py-2 px-3 small d-flex align-items-center gap-2 mb-4">
-          <i class="bi bi-info-circle-fill"></i>
-          <span>{{ statusMessage() }}</span>
-        </div>
-      }
+
 
       <div class="row g-4">
         <!-- Partner Profile Card -->
@@ -195,11 +190,11 @@ import { DeliveryPartner, Delivery } from '../../models/delivery.model';
 })
 export class PartnerComponent implements OnInit {
   private deliveryService = inject(DeliveryService);
+  private toastService = inject(ToastService);
 
   partner = signal<DeliveryPartner | null>(null);
   activeOrderId = 2;
   activeDelivery = signal<Delivery | null>(null);
-  statusMessage = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadPartner();
@@ -217,7 +212,10 @@ export class PartnerComponent implements OnInit {
     if (!this.activeOrderId) return;
     this.deliveryService.getDeliveryByOrderId(this.activeOrderId).subscribe({
       next: (res) => this.activeDelivery.set(res.data),
-      error: () => this.activeDelivery.set(null)
+      error: () => {
+        this.activeDelivery.set(null);
+        this.toastService.warning('Shipment Lookup', `No delivery found for Order #${this.activeOrderId}`);
+      }
     });
   }
 
@@ -226,11 +224,10 @@ export class PartnerComponent implements OnInit {
     this.deliveryService.updatePartnerStatus(this.partner()!.id, status).subscribe({
       next: (res) => {
         this.partner.set(res.data);
-        this.statusMessage.set(`Partner status updated to ${status}`);
-        setTimeout(() => this.statusMessage.set(null), 3000);
+        this.toastService.success('Courier Status', `Your fleet status is now ${status}`);
       },
       error: (err) => {
-        this.statusMessage.set(err.error?.message || 'Failed to update partner status.');
+        this.toastService.error('Fleet Status Error', err.error?.message || 'Failed to update partner status.');
       }
     });
   }
@@ -243,11 +240,10 @@ export class PartnerComponent implements OnInit {
       next: (res) => {
         this.activeDelivery.set(res.data);
         this.loadPartner(); // Refresh partner active orders and status (auto-liberated on DELIVERED)
-        this.statusMessage.set(`Shipment advanced to ${nextStatus}!`);
-        setTimeout(() => this.statusMessage.set(null), 3000);
+        this.toastService.success('Shipment Telemetry', `Order #${del.orderId} advanced to ${nextStatus}!`);
       },
       error: (err) => {
-        this.statusMessage.set(err.error?.message || 'Failed to advance status.');
+        this.toastService.error('State Machine Error', err.error?.message || 'Failed to advance status.');
       }
     });
   }

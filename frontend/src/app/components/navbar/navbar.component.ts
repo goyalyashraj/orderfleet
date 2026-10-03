@@ -9,83 +9,136 @@ import { CartService } from '../../services/cart.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <nav class="navbar navbar-expand-lg navbar-dark glass-panel sticky-top mx-3 mt-3 mb-4 px-4 py-2 border">
+    <!-- Top Utility Bar (Amazon/Myntra style delivery & microservice indicator) -->
+    <div class="bg-black py-1 px-3 border-bottom border-dark text-muted" style="font-size: 0.75rem;">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+          <span class="d-none d-sm-inline">
+            <i class="bi bi-shield-check text-success me-1"></i> Verified Architecture: <strong>Spring Boot 3.3 & MySQL</strong>
+          </span>
+          <span class="d-none d-md-inline text-secondary">|</span>
+          <span class="d-none d-md-inline">
+            <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Sub-second API Gateway Routing (:8080)
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-white-50">
+            <i class="bi bi-geo-alt-fill text-danger me-1"></i> Deliver to: <span class="text-white fw-bold">Springfield 62704</span>
+          </span>
+          <span class="badge bg-secondary text-dark fw-bold px-2 py-0">v1.0-PROD</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark glass-panel sticky-top mx-2 mx-md-3 mt-2 mb-4 px-3 px-md-4 py-2 border shadow-sm">
       <div class="container-fluid p-0">
-        <!-- Brand -->
-        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold fs-4 text-white" routerLink="/">
-          <div class="d-flex align-items-center justify-content-center rounded-3 bg-primary text-white" 
-               style="width: 38px; height: 38px; background: var(--primary-gradient) !important;">
-            <i class="bi bi-box-seam-fill fs-5"></i>
+        <!-- Brand Logo -->
+        <a class="navbar-brand d-flex align-items-center gap-2 me-4" routerLink="/">
+          <div class="d-flex align-items-center justify-content-center rounded-2" 
+               style="width: 38px; height: 38px; background: var(--amazon-btn-gradient);">
+            <i class="bi bi-box-seam-fill fs-5 text-dark"></i>
           </div>
-          <span>Order<span style="color: #818cf8;">Fleet</span></span>
-          <span class="badge bg-dark border border-secondary text-secondary ms-1 fs-6 fw-normal px-2 py-1">Microservices</span>
+          <div class="d-flex flex-column" style="line-height: 1.1;">
+            <span class="fw-extrabold fs-4 text-white tracking-tight">Order<span style="color: #ffa41c;">Fleet</span></span>
+            <span class="text-muted fw-bold" style="font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;">Enterprise Retail</span>
+          </div>
         </a>
 
-        <!-- Hamburger for Mobile -->
+        <!-- Mobile Toggler -->
         <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
           <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navContent">
-          <!-- Navigation Links -->
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 gap-1">
+          <!-- Primary Navigation Links -->
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
             <li class="nav-item">
-              <a class="nav-link text-white-50 px-3 py-2 rounded-2" routerLink="/catalog" routerLinkActive="active text-white bg-dark">
-                <i class="bi bi-grid-fill me-1 text-primary"></i> Catalog
+              <a class="nav-link px-3 py-2 rounded-2 text-white-50" routerLink="/catalog" routerLinkActive="active-nav">
+                <i class="bi bi-grid me-1 text-warning"></i> Products
               </a>
             </li>
             @if (authService.isAuthenticated()) {
               <li class="nav-item">
-                <a class="nav-link text-white-50 px-3 py-2 rounded-2" routerLink="/orders" routerLinkActive="active text-white bg-dark">
-                  <i class="bi bi-receipt me-1 text-success"></i> My Orders
+                <a class="nav-link px-3 py-2 rounded-2 text-white-50" routerLink="/orders" routerLinkActive="active-nav">
+                  <i class="bi bi-box2-heart me-1 text-info"></i> Orders & Tracking
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link text-white-50 px-3 py-2 rounded-2" routerLink="/fleet" routerLinkActive="active text-white bg-dark">
-                  <i class="bi bi-bicycle me-1 text-warning"></i> Fleet Console
+                <a class="nav-link px-3 py-2 rounded-2 text-white-50" routerLink="/fleet" routerLinkActive="active-nav">
+                  <i class="bi bi-bicycle me-1 text-success"></i> Fleet Dispatch
                 </a>
               </li>
             }
           </ul>
 
-          <!-- Right Action Controls -->
-          <div class="d-flex align-items-center gap-3">
-            <!-- Cart Button -->
-            <a routerLink="/cart" class="btn btn-glass position-relative d-flex align-items-center gap-2 px-3 py-2">
-              <i class="bi bi-cart3 fs-5 text-indigo"></i>
-              <span class="d-none d-md-inline">Cart</span>
-              @if (cartService.itemCount() > 0) {
-                <span class="badge rounded-pill bg-danger ms-1">
-                  {{ cartService.itemCount() }}
-                </span>
-              }
+          <!-- Right Action Controls (Myntra/Amazon user & cart action area) -->
+          <div class="d-flex align-items-center gap-3 mt-3 mt-lg-0">
+            <!-- Orders Quick Link (Amazon style: Returns & Orders) -->
+            @if (authService.isAuthenticated()) {
+              <a routerLink="/orders" class="d-none d-md-flex flex-column text-decoration-none px-2 py-1 rounded-2 text-white-50 hover-light">
+                <span style="font-size: 0.72rem; color: #94a3b8;">Returns</span>
+                <span class="fw-bold text-white small">&amp; Orders</span>
+              </a>
+            }
+
+            <!-- Shopping Cart Button (Amazon style with yellow badge & total) -->
+            <a routerLink="/cart" class="btn btn-glass d-flex align-items-center gap-2 px-3 py-2 position-relative">
+              <div class="position-relative">
+                <i class="bi bi-cart3 fs-5 text-warning"></i>
+                @if (cartService.itemCount() > 0) {
+                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" 
+                        style="background: #ff3f6c; font-size: 0.7rem; padding: 0.25em 0.55em;">
+                    {{ cartService.itemCount() }}
+                  </span>
+                }
+              </div>
+              <div class="d-none d-sm-flex flex-column align-items-start" style="line-height: 1;">
+                <span class="text-muted" style="font-size: 0.7rem;">Cart</span>
+                <span class="fw-bold text-white small">\${{ cartService.totalAmount().toFixed(2) }}</span>
+              </div>
             </a>
 
-            <!-- Authentication State -->
+            <!-- User Authentication Dropdown -->
             @if (authService.isAuthenticated()) {
               <div class="dropdown">
-                <button class="btn btn-glass dropdown-toggle d-flex align-items-center gap-2" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                  <i class="bi bi-person-circle fs-5 text-primary"></i>
-                  <span class="text-truncate d-none d-sm-inline" style="max-width: 140px;">{{ authService.currentUser()?.email }}</span>
+                <button class="btn btn-glass dropdown-toggle d-flex align-items-center gap-2 py-2" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white" style="width: 28px; height: 28px; font-size: 0.8rem; font-weight: bold;">
+                    {{ (authService.currentUser()?.email || 'U')[0].toUpperCase() }}
+                  </div>
+                  <div class="d-none d-sm-flex flex-column align-items-start text-start" style="line-height: 1.1;">
+                    <span class="text-muted" style="font-size: 0.68rem;">Hello, Signed In</span>
+                    <span class="fw-bold text-white small text-truncate" style="max-width: 110px;">{{ authService.currentUser()?.email?.split('@')?.[0] }}</span>
+                  </div>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end glass-panel border p-2 mt-2" aria-labelledby="userMenu">
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end glass-panel border p-2 mt-2 shadow-lg" aria-labelledby="userMenu">
                   <li class="px-3 py-2 border-bottom border-secondary mb-1">
                     <div class="fw-bold text-white small">{{ authService.currentUser()?.email }}</div>
-                    <div class="text-muted" style="font-size: 0.75rem;">
+                    <div class="text-muted font-monospace" style="font-size: 0.7rem;">
                       {{ authService.userRoles().join(', ') }}
                     </div>
                   </li>
                   <li>
-                    <button class="dropdown-item text-danger rounded-2 d-flex align-items-center gap-2" (click)="logout()">
+                    <a routerLink="/orders" class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white-50">
+                      <i class="bi bi-box2"></i> My Order Shipments
+                    </a>
+                  </li>
+                  <li>
+                    <a routerLink="/cart" class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white-50">
+                      <i class="bi bi-cart"></i> View Saved Cart
+                    </a>
+                  </li>
+                  <li class="border-top border-secondary mt-1 pt-1">
+                    <button class="dropdown-item text-danger rounded-2 py-2 d-flex align-items-center gap-2" (click)="logout()">
                       <i class="bi bi-box-arrow-right"></i> Sign Out
                     </button>
                   </li>
                 </ul>
               </div>
             } @else {
-              <div class="d-flex gap-2">
-                <a routerLink="/login" class="btn btn-glass px-3 py-2">Sign In</a>
-                <a routerLink="/register" class="btn btn-gradient-primary px-3 py-2">Register</a>
+              <div class="d-flex align-items-center gap-2">
+                <a routerLink="/login" class="btn btn-glass px-3 py-2 text-white">Sign In</a>
+                <a routerLink="/register" class="btn btn-amazon-primary px-3 py-2">Join Free</a>
               </div>
             }
           </div>
@@ -94,10 +147,13 @@ import { CartService } from '../../services/cart.service';
     </nav>
   `,
   styles: [`
-    .nav-link.active {
-      background: rgba(99, 102, 241, 0.15) !important;
+    .active-nav {
+      background: rgba(255, 255, 255, 0.08) !important;
       color: #ffffff !important;
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-weight: 600;
+    }
+    .hover-light:hover span {
+      color: #ffffff !important;
     }
   `]
 })
