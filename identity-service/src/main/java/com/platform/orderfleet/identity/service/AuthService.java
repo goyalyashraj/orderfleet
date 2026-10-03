@@ -152,4 +152,20 @@ public class AuthService {
                 user.getCreatedAt()
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(user -> new UserProfileResponse(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getFirstName(),
+                        user.getLastName(),
+                        user.getPhone(),
+                        user.getStatus(),
+                        user.getRoles().stream().map(r -> r.getName().name()).toList(),
+                        user.getCreatedAt()
+                ))
+                .toList();
+    }
 }

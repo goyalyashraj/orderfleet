@@ -51,4 +51,11 @@ public class OrderController {
         List<OrderResponse> orders = orderService.getUserOrders(userId);
         return ResponseEntity.ok(ApiResponse.success(orders));
     }
+
+    @GetMapping("/admin/all")
+    @Operation(summary = "List all customer orders", description = "Admin view of all customer orders across the platform")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getAllOrders() {
+        List<OrderResponse> orders = orderService.getAllOrders();
+        return ResponseEntity.ok(ApiResponse.success(orders, "All platform orders retrieved successfully"));
+    }
 }

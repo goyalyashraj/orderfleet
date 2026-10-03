@@ -47,6 +47,10 @@ export class AuthService {
     return this.http.get<ApiResponse<User>>(`${this.apiUrl}/me`);
   }
 
+  getAllUsersAdmin(): Observable<ApiResponse<User[]>> {
+    return this.http.get<ApiResponse<User[]>>(`${this.apiUrl}/admin/users`);
+  }
+
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);

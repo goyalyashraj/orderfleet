@@ -20,4 +20,12 @@ export class OrderService {
   getOrderById(id: number): Observable<ApiResponse<Order>> {
     return this.http.get<ApiResponse<Order>>(`${this.apiUrl}/${id}`);
   }
+
+  getMyOrders(): Observable<ApiResponse<Order[]>> {
+    return this.http.get<ApiResponse<Order[]>>(`${this.apiUrl}/my-orders`);
+  }
+
+  getAllOrdersAdmin(): Observable<ApiResponse<Order[]>> {
+    return this.http.get<ApiResponse<Order[]>>(`${this.apiUrl}/admin/all`);
+  }
 }

@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication & Identity", description = "Endpoints for dynamic user registration, login, and profile inspection")
@@ -47,5 +49,12 @@ public class AuthController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         UserProfileResponse profile = authService.getCurrentUserProfile(currentUser.getId());
         return ResponseEntity.ok(ApiResponse.success(profile, "User profile retrieved successfully"));
+    }
+
+    @GetMapping("/admin/users")
+    @Operation(summary = "Get all registered users", description = "Admin-only view of registered customers and roles")
+    public ResponseEntity<ApiResponse<List<UserProfileResponse>>> getAllUsers() {
+        List<UserProfileResponse> users = authService.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.success(users, "Retrieved all registered users"));
     }
 }

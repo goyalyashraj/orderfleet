@@ -38,7 +38,7 @@ export interface Order {
   addressId: number;
   totalAmount: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'DELIVERED';
-  paymentStatus: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED' | 'ABORTED_INSUFFICIENT_STOCK' | string;
   reservationCode: string;
   items: OrderItem[];
   createdAt: string;

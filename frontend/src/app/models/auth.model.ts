@@ -6,6 +6,7 @@ export interface User {
   phone?: string;
   status: string;
   roles: string[];
+  createdAt?: string;
 }
 
 export interface AuthResponse {
