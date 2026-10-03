@@ -1,0 +1,66 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:4200"
+              - "http://127.0.0.1:4200"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+
+      routes:
+        # Route 1: Identity Service (Authentication, Registration, Token Validation)
+        - id: identity-service-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+
+        # Route 2: Catalog & Inventory Service (Products, Categories, Inventory)
+        - id: catalog-service-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/products/**, /api/v1/categories/**, /api/v1/inventory/**
+
+        # Route 3: Order Service (Shopping Cart, Checkout, Order Tracking)
+        - id: order-service-route
+          uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/cart/**, /api/v1/orders/**
+
+        # Route 4: Delivery Service (Addresses, Fleet Partners, Shipments)
+        - id: delivery-service-route
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/addresses/**, /api/v1/delivery-partners/**, /api/v1/deliveries/**
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:d41d8cd98f00b204e9800998ecf8427e4b5a6c7d8e9f0a1b2c3d4e5f6a7b8c9d}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true

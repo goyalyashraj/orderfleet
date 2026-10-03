@@ -36,6 +36,7 @@
         <module>catalog-inventory-service</module>
         <module>order-service</module>
         <module>delivery-service</module>
+        <module>api-gateway</module>
     </modules>
 
     <dependencyManagement>
