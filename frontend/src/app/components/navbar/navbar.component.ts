@@ -9,23 +9,26 @@ import { CartService } from '../../services/cart.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <!-- Top Utility Bar (Amazon/Myntra style delivery & microservice indicator) -->
+    <!-- Top Utility Bar (Amazon/Myntra style delivery & customer care indicator) -->
     <div class="bg-black py-1 px-3 border-bottom border-dark text-muted" style="font-size: 0.75rem;">
       <div class="container-fluid d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
-          <span class="d-none d-sm-inline">
-            <i class="bi bi-shield-check text-success me-1"></i> Verified Architecture: <strong>Spring Boot 3.3 & MySQL</strong>
+          <span class="d-none d-sm-inline text-white-50">
+            <i class="bi bi-patch-check-fill text-warning me-1"></i> 100% Genuine Products
           </span>
           <span class="d-none d-md-inline text-secondary">|</span>
-          <span class="d-none d-md-inline">
-            <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Sub-second API Gateway Routing (:8080)
+          <span class="d-none d-md-inline text-white-50">
+            <i class="bi bi-truck text-success me-1"></i> Free Express Delivery on Orders Over $35
+          </span>
+          <span class="d-none d-lg-inline text-secondary">|</span>
+          <span class="d-none d-lg-inline text-white-50">
+            <i class="bi bi-arrow-repeat text-info me-1"></i> Easy 7-Day Free Returns
           </span>
         </div>
-        <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2">
           <span class="text-white-50">
             <i class="bi bi-geo-alt-fill text-danger me-1"></i> Deliver to: <span class="text-white fw-bold">Springfield 62704</span>
           </span>
-          <span class="badge bg-secondary text-dark fw-bold px-2 py-0">v1.0-PROD</span>
         </div>
       </div>
     </div>

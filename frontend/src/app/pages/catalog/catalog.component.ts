@@ -23,17 +23,17 @@ import { Category, Product } from '../../models/catalog.model';
               <i class="bi bi-tag-fill"></i>
               <span class="fw-bold">PRIME DEALS • UP TO 25% OFF</span>
             </div>
-            <h2 class="fw-extrabold text-white mb-1">Distributed Commerce & High-Speed Fulfillment</h2>
-            <p class="text-muted small mb-0">
-              Live two-phase stock locking with optimistic locking (<code>&#64;Version</code>) powered by <code>catalog-inventory-service</code>.
+            <h2 class="fw-extrabold text-white mb-1">Premium Electronics, Audio &amp; Smart Gear</h2>
+            <p class="text-white-50 small mb-0">
+              Discover verified bestsellers and top-rated essentials with guaranteed real-time stock and express doorstep delivery.
             </p>
           </div>
           <div class="col-md-4 text-md-end">
             <div class="d-inline-flex flex-column align-items-md-end">
-              <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill fw-bold">
+              <span class="badge bg-success text-white px-3 py-2 rounded-pill fw-bold shadow-sm">
                 <i class="bi bi-truck me-1"></i> FREE Express Delivery
               </span>
-              <span class="text-muted small mt-1" style="font-size: 0.75rem;">Guaranteed dispatch within 10 minutes</span>
+              <span class="text-white-50 small mt-1" style="font-size: 0.75rem;">Dispatches within 10 minutes</span>
             </div>
           </div>
         </div>
@@ -45,51 +45,51 @@ import { Category, Product } from '../../models/catalog.model';
         <div class="d-flex gap-2 overflow-auto pb-2 pb-lg-0 scrollbar-none">
           <button 
             type="button" 
-            class="btn btn-sm text-nowrap px-3 py-2 rounded-pill fw-semibold" 
-            [ngClass]="selectedCategoryId() === null ? 'btn-amazon-primary' : 'btn-glass text-white-50'"
+            class="btn btn-sm text-nowrap px-3 py-2 rounded-pill fw-bold" 
+            [ngClass]="selectedCategoryId() === null ? 'btn-amazon-primary' : 'btn-glass text-white'"
             (click)="selectCategory(null)">
-            <i class="bi bi-collection me-1"></i> All Categories
+            <i class="bi bi-grid-fill me-1"></i> All Products
           </button>
           @for (cat of categories(); track cat.id) {
             <button 
               type="button" 
-              class="btn btn-sm text-nowrap px-3 py-2 rounded-pill fw-semibold" 
-              [ngClass]="selectedCategoryId() === cat.id ? 'btn-amazon-primary' : 'btn-glass text-white-50'"
+              class="btn btn-sm text-nowrap px-3 py-2 rounded-pill fw-bold" 
+              [ngClass]="selectedCategoryId() === cat.id ? 'btn-amazon-primary' : 'btn-glass text-white'"
               (click)="selectCategory(cat.id)">
               {{ cat.name }}
             </button>
           }
         </div>
 
-        <!-- Search Bar with Instant Counter -->
-        <div class="d-flex align-items-center gap-2">
-          <div class="input-group" style="min-width: 280px; max-width: 360px;">
-            <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+        <!-- Prominent High-Contrast Search Bar -->
+        <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 440px;">
+          <div class="input-group shadow-sm w-100">
+            <span class="input-group-text bg-dark border-secondary text-warning"><i class="bi bi-search"></i></span>
             <input 
               type="text" 
-              class="form-control form-control-sm" 
-              placeholder="Search products, brands, SKUs..." 
+              class="form-control" 
+              placeholder="Search products, brands, categories..." 
               [(ngModel)]="searchQuery">
             @if (searchQuery) {
-              <button class="btn btn-dark border-secondary text-muted btn-sm" (click)="searchQuery = ''">
-                <i class="bi bi-x"></i>
+              <button class="btn btn-dark border-secondary text-white-50" (click)="searchQuery = ''">
+                <i class="bi bi-x-lg"></i>
               </button>
             }
           </div>
         </div>
       </div>
 
-      <!-- Results Count Bar -->
-      <div class="d-flex justify-content-between align-items-center mb-3 text-muted small">
-        <div>
-          Showing <span class="text-white fw-bold">{{ filteredProducts().length }}</span> products
+      <!-- High-Contrast Results Count Bar -->
+      <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary text-white-50 small">
+        <div class="fs-6">
+          Showing <strong class="text-white">{{ filteredProducts().length }}</strong> products
           @if (selectedCategoryName()) {
-            in <span class="text-warning fw-semibold">{{ selectedCategoryName() }}</span>
+            in <span class="text-warning fw-bold">{{ selectedCategoryName() }}</span>
           }
         </div>
         <div class="d-flex align-items-center gap-2">
-          <span class="d-none d-sm-inline">Sort:</span>
-          <select class="form-select form-select-sm py-0 px-2 bg-dark border-secondary text-white-50" style="width: auto; font-size: 0.8rem;" [(ngModel)]="sortBy">
+          <span class="d-none d-sm-inline text-white-50">Sort by:</span>
+          <select class="form-select form-select-sm py-1 px-3 bg-dark border-secondary text-white fw-semibold" style="width: auto; font-size: 0.82rem;" [(ngModel)]="sortBy">
             <option value="featured">Featured Deals</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
@@ -327,11 +327,14 @@ export class CatalogComponent implements OnInit {
   getProductIcon(product: Product): string {
     const title = product.title.toLowerCase();
     const cat = (product.categoryName || '').toLowerCase();
-    if (title.includes('mouse') || title.includes('keyboard')) return 'bi-mouse';
+    if (title.includes('mouse')) return 'bi-mouse2-fill';
+    if (title.includes('keyboard')) return 'bi-keyboard-fill';
+    if (title.includes('headphone')) return 'bi-headphones';
+    if (title.includes('earbud')) return 'bi-soundwave';
+    if (title.includes('watch') || title.includes('band') || title.includes('fitness') || cat.includes('wearable')) return 'bi-smartwatch';
+    if (title.includes('webcam') || title.includes('camera')) return 'bi-camera-video-fill';
+    if (title.includes('hub') || title.includes('usb')) return 'bi-usb-symbol';
     if (title.includes('laptop') || cat.includes('electron')) return 'bi-laptop';
-    if (title.includes('phone') || title.includes('mobile')) return 'bi-phone';
-    if (title.includes('headphone') || title.includes('audio')) return 'bi-headphones';
-    if (cat.includes('furnit') || title.includes('chair') || title.includes('desk')) return 'bi-lamp';
     return 'bi-box-seam';
   }
 
