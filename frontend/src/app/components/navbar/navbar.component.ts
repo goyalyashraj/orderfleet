@@ -72,6 +72,13 @@ import { CartService } from '../../services/cart.service';
                   <i class="bi bi-bicycle me-1 text-success"></i> Fleet Dispatch
                 </a>
               </li>
+              @if (authService.isAdmin()) {
+                <li class="nav-item">
+                  <a class="nav-link px-3 py-2 rounded-2 text-danger fw-bold" routerLink="/admin" routerLinkActive="active-nav">
+                    <i class="bi bi-shield-lock-fill me-1"></i> Admin Portal
+                  </a>
+                </li>
+              }
             }
           </ul>
 

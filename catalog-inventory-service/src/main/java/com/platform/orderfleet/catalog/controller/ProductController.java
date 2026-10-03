@@ -52,4 +52,11 @@ public class ProductController {
         List<ProductResponse> results = catalogService.searchProducts(query);
         return ResponseEntity.ok(ApiResponse.success(results));
     }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Soft delete / deactivate product", description = "Admin endpoint to remove product from public catalog")
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long id) {
+        catalogService.deleteProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Product deactivated successfully"));
+    }
 }

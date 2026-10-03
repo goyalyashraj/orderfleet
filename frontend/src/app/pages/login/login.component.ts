@@ -68,6 +68,9 @@ import { CartService } from '../../services/cart.service';
                 <button type="button" class="btn btn-glass btn-sm flex-fill" (click)="fillRider()">
                   <i class="bi bi-bicycle text-warning"></i> Rider Bob
                 </button>
+                <button type="button" class="btn btn-glass btn-sm flex-fill" (click)="fillAdmin()">
+                  <i class="bi bi-shield-lock-fill text-danger"></i> Admin
+                </button>
               </div>
             </div>
 
@@ -100,6 +103,11 @@ export class LoginComponent {
   fillRider(): void {
     this.email = 'rider.bob@orderfleet.com';
     this.password = 'StrongPassword123';
+  }
+
+  fillAdmin(): void {
+    this.email = 'admin@orderfleet.com';
+    this.password = 'AdminPassword123!';
   }
 
   onSubmit(): void {

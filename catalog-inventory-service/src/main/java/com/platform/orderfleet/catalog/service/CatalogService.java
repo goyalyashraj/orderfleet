@@ -132,6 +132,15 @@ public class CatalogService {
                 .toList();
     }
 
+    @Transactional
+    public void deleteProduct(Long id) {
+        log.info("Deactivating product with ID: {}", id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
+        product.setActive(false);
+        productRepository.save(product);
+    }
+
     private ProductResponse mapToProductResponse(Product product, int availableStock) {
         Long categoryId = product.getCategory() != null ? product.getCategory().getId() : null;
         String categoryName = product.getCategory() != null ? product.getCategory().getName() : null;
