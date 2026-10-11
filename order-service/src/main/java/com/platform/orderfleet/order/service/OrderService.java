@@ -14,6 +14,7 @@ import com.platform.orderfleet.order.exception.PaymentSimulationException;
 import com.platform.orderfleet.order.exception.ResourceNotFoundException;
 import com.platform.orderfleet.order.repository.CartRepository;
 import com.platform.orderfleet.order.repository.OrderRepository;
+import com.platform.orderfleet.common.dto.event.OrderCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,15 +34,18 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final CatalogClient catalogClient;
     private final CartService cartService;
+    private final OrderEventProducer orderEventProducer;
 
     public OrderService(OrderRepository orderRepository,
                         CartRepository cartRepository,
                         CatalogClient catalogClient,
-                        CartService cartService) {
+                        CartService cartService,
+                        OrderEventProducer orderEventProducer) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.catalogClient = catalogClient;
         this.cartService = cartService;
+        this.orderEventProducer = orderEventProducer;
     }
 
     @Transactional(noRollbackFor = PaymentSimulationException.class)
@@ -126,12 +130,43 @@ public class OrderService {
 
         savedOrder.setStatus(OrderStatus.CONFIRMED);
         savedOrder.setPaymentStatus("SUCCESS");
-        orderRepository.save(savedOrder);
+        savedOrder = orderRepository.save(savedOrder);
 
         // Clear user cart upon successful confirmation
         cartService.clearCart(userId);
 
         log.info("Order successfully confirmed: {}", orderNumber);
+
+        // Step 4: Asynchronously publish OrderCreatedEvent to Kafka for Decoupled Delivery Dispatch
+        try {
+            List<OrderCreatedEvent.OrderItemEventPayload> itemPayloads = savedOrder.getItems().stream()
+                    .map(item -> new OrderCreatedEvent.OrderItemEventPayload(
+                            item.getProductId(),
+                            item.getSku(),
+                            item.getProductTitle(),
+                            item.getUnitPrice(),
+                            item.getQuantity(),
+                            item.getSubtotal()
+                    ))
+                    .toList();
+
+            OrderCreatedEvent orderEvent = new OrderCreatedEvent(
+                    savedOrder.getId(),
+                    savedOrder.getOrderNumber(),
+                    savedOrder.getUserId(),
+                    savedOrder.getAddressId(),
+                    savedOrder.getTotalAmount(),
+                    savedOrder.getPaymentStatus(),
+                    itemPayloads,
+                    savedOrder.getCreatedAt()
+            );
+
+            orderEventProducer.publishOrderCreated(orderEvent);
+        } catch (Exception ex) {
+            log.error("Failed to publish OrderCreatedEvent to Kafka: {}", ex.getMessage(), ex);
+            // Non-blocking: order is confirmed, event failure logged for outbox/retry
+        }
+
         return mapToOrderResponse(savedOrder);
     }
 

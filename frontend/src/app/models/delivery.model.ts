@@ -24,8 +24,10 @@ export interface Address {
   id: number;
   userId: number;
   recipientName: string;
-  phoneNumber: string;
-  streetAddress: string;
+  phone: string;
+  phoneNumber?: string;
+  streetLine: string;
+  streetAddress?: string;
   city: string;
   state: string;
   postalCode: string;

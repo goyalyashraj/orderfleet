@@ -13,6 +13,9 @@ import com.platform.orderfleet.catalog.repository.InventoryItemRepository;
 import com.platform.orderfleet.catalog.repository.ProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +64,10 @@ public class CatalogService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "products", allEntries = true),
+            @CacheEvict(value = "product", allEntries = true)
+    })
     public ProductResponse createProduct(CreateProductRequest request) {
         log.info("Creating dynamic product with SKU: {}", request.sku());
 
@@ -97,6 +104,7 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "products", key = "'allActive'")
     public List<ProductResponse> getAllActiveProducts() {
         return productRepository.findByActiveTrue().stream()
                 .map(p -> {
@@ -109,6 +117,7 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "product", key = "#id")
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
@@ -133,6 +142,10 @@ public class CatalogService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "products", allEntries = true),
+            @CacheEvict(value = "product", allEntries = true)
+    })
     public void deleteProduct(Long id) {
         log.info("Deactivating product with ID: {}", id);
         Product product = productRepository.findById(id)

@@ -2,11 +2,14 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { OrderService } from '../../services/order.service';
 import { DeliveryService } from '../../services/delivery.service';
+import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { Order } from '../../models/order.model';
 import { Delivery, DeliveryPartner } from '../../models/delivery.model';
+import { getProductMetadata } from '../../utils/product-assets';
 
 @Component({
   selector: 'app-orders',
@@ -22,27 +25,27 @@ import { Delivery, DeliveryPartner } from '../../models/delivery.model';
         </ol>
       </nav>
 
-      <!-- Search & Lookup Header -->
+      <!-- Page Header & Quick Search Bar -->
       <div class="glass-panel p-4 mb-4">
         <div class="row align-items-center g-3">
           <div class="col-md-7">
             <h3 class="fw-extrabold text-white mb-1">
-              <i class="bi bi-box2-heart text-warning me-2"></i> Track Your Shipment
+              <i class="bi bi-box2-heart text-warning me-2"></i> Your Orders &amp; Live Telemetry
             </h3>
             <p class="text-muted small mb-0">
-              Real-time shipment telemetry synchronized across Order, Inventory, and Delivery fleets.
+              Real-time shipment telemetry synchronized across Order, Inventory, and Delivery fleets via Apache Kafka.
             </p>
           </div>
           <div class="col-md-5">
             <div class="input-group">
-              <span class="input-group-text bg-dark border-secondary text-muted">Order ID</span>
+              <span class="input-group-text bg-dark border-secondary text-muted">Order #</span>
               <input 
                 type="number" 
                 class="form-control" 
                 [(ngModel)]="searchOrderId" 
-                placeholder="Enter Order # (e.g. 1, 2, 3)"
+                placeholder="Lookup Order ID (e.g. 1, 2, 3)"
                 (keyup.enter)="loadOrder(searchOrderId)">
-              <button class="btn btn-amazon-primary px-3" (click)="loadOrder(searchOrderId)">
+              <button class="btn btn-amazon-primary px-3 fw-bold" (click)="loadOrder(searchOrderId)">
                 <i class="bi bi-search me-1"></i> Track
               </button>
             </div>
@@ -50,262 +53,325 @@ import { Delivery, DeliveryPartner } from '../../models/delivery.model';
         </div>
       </div>
 
-      <!-- SKELETON / LOADING STATE -->
-      @if (loading()) {
-        <div class="glass-panel p-4 mb-4">
-          <div class="skeleton-shimmer mb-3" style="height: 28px; width: 35%;"></div>
-          <div class="skeleton-shimmer mb-4" style="height: 60px; width: 100%;"></div>
-          <div class="row g-3">
-            <div class="col-md-6"><div class="skeleton-shimmer" style="height: 120px; width: 100%;"></div></div>
-            <div class="col-md-6"><div class="skeleton-shimmer" style="height: 120px; width: 100%;"></div></div>
-          </div>
+      <!-- MAIN 2-COLUMN VIEW: ORDER HISTORY (LEFT) + LIVE TRACKING & DETAILS (RIGHT) -->
+      @if (loadingOrders()) {
+        <div class="glass-panel p-5 text-center my-4">
+          <div class="spinner-border text-warning mb-3" role="status"></div>
+          <div class="text-white fw-bold">Loading Your Order History...</div>
+          <div class="text-muted small">Fetching records from distributed order_db</div>
         </div>
-      } @else if (order()) {
-        <!-- LIVE SHIPMENT TRACKING STEPPER (Myntra/Amazon style) -->
-        <div class="glass-panel p-4 mb-4 position-relative overflow-hidden" 
-             style="background: linear-gradient(180deg, #131b2e 0%, #0d121f 100%);">
+      } @else if (userOrders().length === 0 && !order()) {
+        <!-- Empty State -->
+        <div class="glass-panel text-center py-5 px-4 my-4" style="max-width: 560px; margin: 0 auto;">
+          <div class="d-inline-flex p-4 rounded-circle mb-3" style="background: rgba(245, 158, 11, 0.1);">
+            <i class="bi bi-bag-x fs-1 text-warning"></i>
+          </div>
+          <h3 class="text-white fw-bold mb-2">No Orders Found Yet</h3>
+          <p class="text-muted mb-4">
+            You haven't placed any orders yet. Discover our latest electronics and gadget deals on the storefront!
+          </p>
+          <a routerLink="/catalog" class="btn btn-amazon-primary px-4 py-2 fw-bold">
+            <i class="bi bi-shop me-1"></i> Start Shopping
+          </a>
+        </div>
+      } @else {
+        <div class="row g-4">
           
-          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center border-bottom border-secondary pb-3 mb-4 gap-2">
-            <div>
-              <span class="text-muted small">Tracking Package for Order</span>
-              <h4 class="fw-extrabold text-white m-0 font-monospace">{{ order()!.orderNumber }}</h4>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-dark border border-secondary text-white-50 px-3 py-2 small">
-                Placed on {{ order()!.createdAt | date:'mediumDate' }}
-              </span>
-              <span class="badge badge-pill-status" [ngClass]="getStatusBadgeClass(order()!.status)">
-                {{ order()!.status }}
-              </span>
-            </div>
-          </div>
-
-          <!-- CONNECTED STEPPER COMPONENT -->
-          <div class="stepper-container px-2 px-md-5 my-4">
-            <div class="position-relative d-flex justify-content-between align-items-center">
-              <!-- Background Connecting Line -->
-              <div class="stepper-line-bg position-absolute top-50 start-0 w-100 translate-middle-y"
-                   style="height: 4px; background: #28334a; z-index: 1;"></div>
-              
-              <!-- Active Progress Fill Line -->
-              <div class="stepper-line-fill position-absolute top-50 start-0 translate-middle-y"
-                   [style.width]="getStepProgressPercentage()"
-                   style="height: 4px; background: linear-gradient(90deg, #10b981 0%, #34d399 100%); z-index: 2; transition: width 0.5s ease;"></div>
-
-              <!-- Step 1: Ordered -->
-              <div class="step-node text-center position-relative z-3">
-                <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                     [ngClass]="isStepActive('ORDERED') ? 'step-circle-active' : 'step-circle-inactive'">
-                  <i class="bi bi-cart-check-fill fs-5"></i>
-                </div>
-                <div class="small fw-bold text-white">Ordered</div>
-                <div class="text-muted" style="font-size: 0.7rem;">Verified</div>
+          <!-- LEFT COLUMN: ORDER HISTORY LIST (40%) -->
+          <div class="col-lg-4">
+            <div class="glass-panel p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
+                <span class="fw-bold text-white small text-uppercase" style="letter-spacing: 0.05em;">
+                  <i class="bi bi-clock-history me-1 text-warning"></i> Order History ({{ userOrders().length }})
+                </span>
+                <button class="btn btn-link text-white-50 p-0 small text-decoration-none" (click)="loadUserOrders()">
+                  <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
               </div>
 
-              <!-- Step 2: Confirmed -->
-              <div class="step-node text-center position-relative z-3">
-                <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                     [ngClass]="isStepActive('CONFIRMED') ? 'step-circle-active' : 'step-circle-inactive'">
-                  <i class="bi bi-shield-check fs-5"></i>
-                </div>
-                <div class="small fw-bold text-white">Confirmed</div>
-                <div class="text-muted" style="font-size: 0.7rem;">Stock Locked</div>
-              </div>
+              <!-- Order List Cards -->
+              <div class="d-flex flex-column gap-2" style="max-height: 700px; overflow-y: auto;">
+                @for (ord of userOrders(); track ord.orderId) {
+                  <div class="order-history-card p-3 rounded-3 transition-all cursor-pointer"
+                       [class.order-card-selected]="order()?.orderId === ord.orderId"
+                       (click)="selectOrder(ord)">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div>
+                        <div class="fw-bold text-white font-monospace small">#{{ ord.orderNumber }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ ord.createdAt | date:'mediumDate' }}</div>
+                      </div>
+                      <span class="badge badge-pill-status" [ngClass]="getStatusBadgeClass(ord.status)">
+                        {{ ord.status }}
+                      </span>
+                    </div>
 
-              <!-- Step 3: Shipped (Assigned / Picked Up) -->
-              <div class="step-node text-center position-relative z-3">
-                <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                     [ngClass]="isStepActive('SHIPPED') ? 'step-circle-active' : 'step-circle-inactive'">
-                  <i class="bi bi-box-seam-fill fs-5"></i>
-                </div>
-                <div class="small fw-bold text-white">Shipped</div>
-                <div class="text-muted" style="font-size: 0.7rem;">Hub Dispatched</div>
-              </div>
-
-              <!-- Step 4: Out for Delivery -->
-              <div class="step-node text-center position-relative z-3">
-                <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                     [ngClass]="isStepActive('IN_TRANSIT') ? 'step-circle-active' : 'step-circle-inactive'">
-                  <i class="bi bi-bicycle fs-5"></i>
-                </div>
-                <div class="small fw-bold text-white">Out for Delivery</div>
-                <div class="text-muted" style="font-size: 0.7rem;">Courier on Way</div>
-              </div>
-
-              <!-- Step 5: Delivered -->
-              <div class="step-node text-center position-relative z-3">
-                <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                     [ngClass]="isStepActive('DELIVERED') ? 'step-circle-completed' : 'step-circle-inactive'">
-                  <i class="bi bi-house-check-fill fs-5"></i>
-                </div>
-                <div class="small fw-bold text-white">Delivered</div>
-                <div class="text-muted" style="font-size: 0.7rem;">Package Handover</div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-dark" style="font-size: 0.78rem;">
+                      <span class="text-white-50">{{ ord.items.length }} {{ ord.items.length === 1 ? 'item' : 'items' }}</span>
+                      <strong class="text-white">\${{ ord.totalAmount.toFixed(2) }}</strong>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
           </div>
 
-          <!-- Courier Partner Info Card (Amazon/Swiggy delivery partner strip) -->
-          @if (delivery()) {
-            <div class="p-3 rounded-3 mt-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
-                 style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
-              <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width: 50px; height: 50px; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4);">
-                  <i class="bi bi-person-fill-gear fs-4 text-primary"></i>
-                </div>
-                <div>
-                  <div class="small text-muted">Assigned Delivery Partner</div>
-                  <h6 class="fw-bold text-white m-0">
-                    {{ partner() ? partner()!.fullName : 'Fleet Courier #1' }} 
-                    <span class="badge bg-dark border border-secondary text-warning small ms-1">
-                      <i class="bi bi-bicycle"></i> {{ partner() ? partner()!.vehicleType : 'Motorcycle' }}
+          <!-- RIGHT COLUMN: ACTIVE ORDER TRACKING & DETAILS (60%) -->
+          <div class="col-lg-8">
+            @if (loading()) {
+              <div class="glass-panel p-4 mb-4">
+                <div class="skeleton-shimmer mb-3" style="height: 28px; width: 45%;"></div>
+                <div class="skeleton-shimmer mb-4" style="height: 80px; width: 100%;"></div>
+                <div class="skeleton-shimmer" style="height: 160px; width: 100%;"></div>
+              </div>
+            } @else if (order()) {
+              <!-- 1. LIVE SHIPMENT STEPPER -->
+              <div class="glass-panel p-4 mb-4 position-relative overflow-hidden" 
+                   style="background: linear-gradient(180deg, #131b2e 0%, #0d121f 100%);">
+                
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center border-bottom border-secondary pb-3 mb-4 gap-2">
+                  <div>
+                    <span class="text-muted small">Tracking Package for Order</span>
+                    <h4 class="fw-extrabold text-white m-0 font-monospace">{{ order()!.orderNumber }}</h4>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-dark border border-secondary text-white-50 px-3 py-2 small">
+                      Placed on {{ order()!.createdAt | date:'mediumDate' }}
                     </span>
-                  </h6>
-                  <div class="text-muted small" style="font-size: 0.72rem;">
-                    Status: <span class="text-success fw-bold">{{ delivery()!.status }}</span> &bull; Origin: {{ delivery()!.pickupLocation }}
+                    <span class="badge badge-pill-status" [ngClass]="getStatusBadgeClass(order()!.status)">
+                      {{ order()!.status }}
+                    </span>
                   </div>
                 </div>
-              </div>
 
-              <div class="d-flex align-items-center gap-2">
-                <a routerLink="/fleet" class="btn btn-glass btn-sm text-nowrap">
-                  <i class="bi bi-broadcast me-1"></i> Open Courier Fleet Console
-                </a>
-              </div>
-            </div>
-          }
-        </div>
+                <!-- CONNECTED STEPPER COMPONENT -->
+                <div class="stepper-container px-2 px-md-4 my-4">
+                  <div class="position-relative d-flex justify-content-between align-items-center">
+                    <!-- Background Connecting Line -->
+                    <div class="stepper-line-bg position-absolute top-50 start-0 w-100 translate-middle-y"
+                         style="height: 4px; background: #28334a; z-index: 1;"></div>
+                    
+                    <!-- Active Progress Fill Line -->
+                    <div class="stepper-line-fill position-absolute top-50 start-0 translate-middle-y"
+                         [style.width]="getStepProgressPercentage()"
+                         style="height: 4px; background: linear-gradient(90deg, #10b981 0%, #34d399 100%); z-index: 2; transition: width 0.5s ease;"></div>
 
-        <!-- 2-COLUMN DETAILS: Items & Audit History -->
-        <div class="row g-4">
-          <!-- Left: Order Items & Payment -->
-          <div class="col-lg-6">
-            <div class="glass-panel p-4 h-100">
-              <h5 class="fw-bold text-white mb-3 border-bottom border-secondary pb-2">
-                <i class="bi bi-receipt text-warning me-2"></i> Items in this Order
-              </h5>
-
-              <div class="list-group list-group-flush border-0">
-                @for (item of order()!.items; track item.id) {
-                  <div class="list-group-item bg-transparent text-white px-0 py-3 border-secondary d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-3">
-                      <div class="rounded-2 d-flex align-items-center justify-content-center"
-                           style="width: 48px; height: 48px; background: #1e293b; border: 1px solid #334155;">
-                        <i class="bi bi-box-seam text-warning"></i>
+                    <!-- Step 1: Ordered -->
+                    <div class="step-node text-center position-relative z-3">
+                      <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                           [ngClass]="isStepActive('ORDERED') ? 'step-circle-active' : 'step-circle-inactive'">
+                        <i class="bi bi-cart-check-fill fs-5"></i>
                       </div>
-                      <div>
-                        <div class="fw-semibold text-white small">{{ item.productTitle }}</div>
-                        <div class="text-muted font-monospace" style="font-size: 0.72rem;">SKU: {{ item.sku }}</div>
-                        <div class="text-muted small" style="font-size: 0.75rem;">Qty: {{ item.quantity }} &times; \${{ item.unitPrice.toFixed(2) }}</div>
-                      </div>
+                      <div class="step-label fw-bold text-white small">Ordered</div>
+                      <div class="step-date text-muted" style="font-size: 0.68rem;">Verified</div>
                     </div>
-                    <div class="fw-bold text-white">\${{ item.subtotal.toFixed(2) }}</div>
+
+                    <!-- Step 2: Confirmed -->
+                    <div class="step-node text-center position-relative z-3">
+                      <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                           [ngClass]="isStepActive('CONFIRMED') ? 'step-circle-active' : 'step-circle-inactive'">
+                        <i class="bi bi-shield-fill-check fs-5"></i>
+                      </div>
+                      <div class="step-label fw-bold text-white small">Stock Reserved</div>
+                      <div class="step-date text-muted" style="font-size: 0.68rem;">Pessimistic Lock</div>
+                    </div>
+
+                    <!-- Step 3: Kafka Dispatched -->
+                    <div class="step-node text-center position-relative z-3">
+                      <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                           [ngClass]="isStepActive('SHIPPED') ? 'step-circle-active' : 'step-circle-inactive'">
+                        <i class="bi bi-box-seam-fill fs-5"></i>
+                      </div>
+                      <div class="step-label fw-bold text-white small">Dispatched</div>
+                      <div class="step-date text-muted" style="font-size: 0.68rem;">Kafka Event</div>
+                    </div>
+
+                    <!-- Step 4: Out for Delivery -->
+                    <div class="step-node text-center position-relative z-3">
+                      <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                           [ngClass]="isStepActive('IN_TRANSIT') ? 'step-circle-active' : 'step-circle-inactive'">
+                        <i class="bi bi-truck fs-5"></i>
+                      </div>
+                      <div class="step-label fw-bold text-white small">Out for Delivery</div>
+                      <div class="step-date text-muted" style="font-size: 0.68rem;">Fleet Courier</div>
+                    </div>
+
+                    <!-- Step 5: Delivered -->
+                    <div class="step-node text-center position-relative z-3">
+                      <div class="step-circle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                           [ngClass]="isStepActive('DELIVERED') ? 'step-circle-active' : 'step-circle-inactive'">
+                        <i class="bi bi-house-door-fill fs-5"></i>
+                      </div>
+                      <div class="step-label fw-bold text-white small">Delivered</div>
+                      <div class="step-date text-muted" style="font-size: 0.68rem;">Package Handed</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- LIVE COURIER / DELIVERY STATUS CARD -->
+                @if (delivery()) {
+                  <div class="p-3 rounded-3 mt-4" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle p-2 bg-success text-white d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                          <i class="bi bi-bicycle fs-5"></i>
+                        </div>
+                        <div>
+                          <div class="fw-bold text-white small">Delivery Dispatch Partner: {{ partner()?.fullName || 'OrderFleet Express Carrier' }}</div>
+                          <div class="text-white-50" style="font-size: 0.72rem;">Vehicle: {{ partner()?.vehicleType || 'Electric Scooter' }} &bull; Contact: {{ partner()?.phone || '+1 (555) 019-2831' }}</div>
+                        </div>
+                      </div>
+                      <span class="badge bg-success text-white px-3 py-1 fw-bold small">
+                        Status: {{ delivery()!.status }}
+                      </span>
+                    </div>
                   </div>
                 }
               </div>
 
-              <!-- Price & Payment Summary -->
-              <div class="border-top border-secondary pt-3 mt-3">
-                <div class="d-flex justify-content-between text-muted small py-1">
-                  <span>Stock Lock Code</span>
-                  <span class="font-monospace text-info">{{ order()!.reservationCode }}</span>
+              <!-- 2. PACKAGE ITEMS & DESTINATION SUMMARY -->
+              <div class="row g-3">
+                <!-- Package Items Breakdown -->
+                <div class="col-md-7">
+                  <div class="glass-panel p-3 h-100">
+                    <h6 class="fw-bold text-white mb-3 border-bottom border-secondary pb-2">
+                      <i class="bi bi-box me-1 text-primary"></i> Package Items ({{ order()!.items.length }})
+                    </h6>
+
+                    <div class="d-flex flex-column gap-2">
+                      @for (item of order()!.items; track item.id) {
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded-2"
+                             style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05);">
+                          <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-2 p-1 d-flex align-items-center justify-content-center flex-shrink-0"
+                                 style="width: 44px; height: 44px; background: #0f172a; border: 1px solid #334155;">
+                              <div style="width: 38px; height: 38px;" [innerHTML]="getItemSvg(item.sku, item.productTitle)"></div>
+                            </div>
+                            <div>
+                              <div class="text-white small fw-bold text-truncate" style="max-width: 220px;">{{ item.productTitle }}</div>
+                              <div class="text-muted" style="font-size: 0.72rem;">Qty: {{ item.quantity }} &bull; \${{ item.unitPrice.toFixed(2) }} each</div>
+                            </div>
+                          </div>
+                          <div class="text-white fw-bold small">\${{ item.subtotal.toFixed(2) }}</div>
+                        </div>
+                      }
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-3 mt-3 border-top border-secondary">
+                      <span class="text-white-50 small">Order Total:</span>
+                      <span class="fs-5 fw-extrabold text-white">\${{ order()!.totalAmount.toFixed(2) }}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="d-flex justify-content-between text-muted small py-1">
-                  <span>Payment Gateway Status</span>
-                  <span class="badge bg-success">{{ order()!.paymentStatus }}</span>
-                </div>
-                <div class="d-flex justify-content-between text-white fw-bold fs-5 pt-2 border-top border-secondary mt-2">
-                  <span>Total Paid</span>
-                  <span style="color: #ffa41c;">\${{ order()!.totalAmount.toFixed(2) }}</span>
+
+                <!-- Destination Address & Kafka Telemetry -->
+                <div class="col-md-5">
+                  <div class="glass-panel p-3 h-100">
+                    <h6 class="fw-bold text-white mb-3 border-bottom border-secondary pb-2">
+                      <i class="bi bi-geo-alt me-1 text-danger"></i> Shipping Snapshot
+                    </h6>
+                    <div class="text-white small fw-bold mb-1">
+                      {{ delivery()?.deliveryAddressSnapshot || 'Express Registered Address' }}
+                    </div>
+                    <div class="text-white-50 small mb-3">
+                      Order ID Reference: #{{ order()!.orderNumber }}
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top border-secondary">
+                      <div class="small fw-bold text-white mb-1">
+                        <i class="bi bi-activity text-info me-1"></i> Distributed Event Log
+                      </div>
+                      <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
+                        Topic: <code class="text-info">order.created</code><br>
+                        Idempotency Key: <code class="text-warning">redis:idemp:{{ order()!.orderId }}</code><br>
+                        Lock: MySQL InnoDB Pessimistic Write Lock
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            } @else {
+              <div class="glass-panel text-center py-5">
+                <i class="bi bi-search fs-2 text-white-50 mb-2"></i>
+                <div class="text-white fw-bold">Select an order from history or enter an Order ID above.</div>
+              </div>
+            }
           </div>
 
-          <!-- Right: Delivery Destination & Audit Trail -->
-          <div class="col-lg-6">
-            <div class="glass-panel p-4 h-100">
-              <h5 class="fw-bold text-white mb-3 border-bottom border-secondary pb-2">
-                <i class="bi bi-clock-history text-info me-2"></i> Shipment Event Trail
-              </h5>
-
-              @if (delivery()) {
-                <div class="p-3 rounded-2 mb-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
-                  <div class="small text-muted mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Delivery Address:</div>
-                  <div class="text-white small fw-semibold">{{ delivery()!.deliveryAddressSnapshot }}</div>
-                </div>
-
-                <!-- Event Timeline -->
-                <div class="timeline ps-3 border-start border-secondary mt-3">
-                  @for (log of delivery()!.logs; track log.timestamp) {
-                    <div class="position-relative mb-3 ps-3">
-                      <div class="position-absolute start-0 top-0 translate-middle-x rounded-circle" 
-                           style="width: 10px; height: 10px; left: -1px !important; background: #10b981;"></div>
-                      <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-dark border border-secondary text-info small">{{ log.status }}</span>
-                        <span class="text-muted small" style="font-size: 0.72rem;">{{ log.timestamp | date:'mediumTime' }}</span>
-                      </div>
-                      <div class="text-white-50 small mt-1">{{ log.note }}</div>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <div class="text-center py-5 text-muted">
-                  <i class="bi bi-hourglass fs-2 mb-2 d-block"></i>
-                  <span>No delivery dispatch record created yet for this order.</span>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      } @else {
-        <!-- Empty Order Selection -->
-        <div class="glass-panel text-center py-5 p-4">
-          <div class="d-inline-flex p-4 rounded-circle mb-3" style="background: rgba(99, 102, 241, 0.1);">
-            <i class="bi bi-box2 fs-1 text-primary"></i>
-          </div>
-          <h4 class="text-white fw-bold">Order Not Found</h4>
-          <p class="text-muted mb-4 mx-auto" style="max-width: 440px;">
-            We couldn't locate an order with ID {{ searchOrderId }}. Try entering another order number or explore your shopping cart.
-          </p>
-          <a routerLink="/catalog" class="btn btn-amazon-primary">
-            <i class="bi bi-grid-fill me-1"></i> Browse Catalog
-          </a>
         </div>
       }
     </div>
   `,
   styles: [`
+    .order-history-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .order-history-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    .order-card-selected {
+      background: rgba(245, 158, 11, 0.08) !important;
+      border-color: #f59e0b !important;
+    }
+    .cursor-pointer {
+      cursor: pointer;
+    }
+    .badge-pill-status {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-status-confirmed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-status-pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-status-cancelled {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-status-delivered {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
     .step-circle {
       width: 44px;
       height: 44px;
-      border: 2px solid #334155;
-      background: #0f172a;
       transition: all 0.3s ease;
     }
     .step-circle-active {
-      border-color: #10b981 !important;
-      background: #10b981 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
-    }
-    .step-circle-completed {
-      border-color: #10b981 !important;
-      background: #10b981 !important;
-      color: #ffffff !important;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
     }
     .step-circle-inactive {
-      color: #64748b;
+      background: #1e293b;
+      color: #475569;
+      border: 1px solid #334155;
     }
   `]
 })
 export class OrdersComponent implements OnInit {
   private orderService = inject(OrderService);
   private deliveryService = inject(DeliveryService);
+  private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private route = inject(ActivatedRoute);
+  private sanitizer = inject(DomSanitizer);
 
-  searchOrderId = 2;
+  searchOrderId = 1;
+  userOrders = signal<Order[]>([]);
+  loadingOrders = signal(true);
   order = signal<Order | null>(null);
   delivery = signal<Delivery | null>(null);
   partner = signal<DeliveryPartner | null>(null);
@@ -316,9 +382,61 @@ export class OrdersComponent implements OnInit {
     if (paramId) {
       this.searchOrderId = Number(paramId);
       this.loadOrder(this.searchOrderId);
-    } else {
-      this.loadOrder(2);
     }
+    this.loadUserOrders();
+  }
+
+  isAdminUser(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  loadUserOrders(): void {
+    this.loadingOrders.set(true);
+
+    if (this.authService.isAdmin()) {
+      this.orderService.getAllOrdersAdmin().subscribe({
+        next: (res) => {
+          const list = res.data || [];
+          this.userOrders.set(list);
+          this.loadingOrders.set(false);
+          if (!this.order() && list.length > 0) {
+            this.selectOrder(list[0]);
+          }
+        },
+        error: () => {
+          this.fetchCustomerOrders();
+        }
+      });
+    } else {
+      this.fetchCustomerOrders();
+    }
+  }
+
+  private fetchCustomerOrders(): void {
+    this.orderService.getMyOrders().subscribe({
+      next: (res) => {
+        const list = res.data || [];
+        this.userOrders.set(list);
+        this.loadingOrders.set(false);
+        if (!this.order() && list.length > 0) {
+          this.selectOrder(list[0]);
+        } else if (!this.order()) {
+          this.loadOrder(10);
+        }
+      },
+      error: () => {
+        this.loadingOrders.set(false);
+        if (!this.order()) {
+          this.loadOrder(10);
+        }
+      }
+    });
+  }
+
+  selectOrder(order: Order): void {
+    this.searchOrderId = order.orderId;
+    this.order.set(order);
+    this.loadDelivery(order.orderId);
   }
 
   loadOrder(orderId: number): void {
@@ -356,6 +474,11 @@ export class OrdersComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  getItemSvg(sku: string, title: string): SafeHtml {
+    const meta = getProductMetadata(sku, title, '');
+    return this.sanitizer.bypassSecurityTrustHtml(meta.svgArtwork);
   }
 
   getStatusBadgeClass(status: string): string {

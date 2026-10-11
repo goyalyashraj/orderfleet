@@ -14,8 +14,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: CatalogServiceHikariCP
-      maximum-pool-size: ${DB_POOL_MAX:10}
-      minimum-idle: ${DB_POOL_MIN:2}
+      maximum-pool-size: ${DB_POOL_MAX:25}
+      minimum-idle: ${DB_POOL_MIN:5}
       idle-timeout: 30000
       connection-timeout: 20000
       max-lifetime: 1800000
@@ -29,6 +29,18 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
     open-in-view: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000ms
+      cache-null-values: false
 
 management:
   endpoints:

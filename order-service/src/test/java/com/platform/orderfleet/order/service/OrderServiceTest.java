@@ -41,11 +41,14 @@ class OrderServiceTest {
     @Mock
     private CartService cartService;
 
+    @Mock
+    private OrderEventProducer orderEventProducer;
+
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(orderRepository, cartRepository, catalogClient, cartService);
+        orderService = new OrderService(orderRepository, cartRepository, catalogClient, cartService, orderEventProducer);
     }
 
     @Test

@@ -12,7 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -20,19 +22,47 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final com.platform.orderfleet.order.service.IdempotencyService idempotencyService;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService,
+                           com.platform.orderfleet.order.service.IdempotencyService idempotencyService) {
         this.orderService = orderService;
+        this.idempotencyService = idempotencyService;
     }
 
     @PostMapping("/checkout")
-    @Operation(summary = "Execute order checkout", description = "Synchronously reserves stock with catalog service and simulates payment")
+    @Operation(summary = "Execute order checkout", description = "Synchronously reserves stock with catalog service and simulates payment with Redis distributed idempotency")
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
             @RequestHeader(value = SecurityConstants.HEADER_USER_ID, defaultValue = "1") Long userId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CheckoutRequest request) {
-        OrderResponse response = orderService.checkout(userId, request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created(response, "Order placed and confirmed successfully"));
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<OrderResponse> cached = idempotencyService.getCachedResponse(idempotencyKey);
+            if (cached.isPresent()) {
+                return ResponseEntity.ok(ApiResponse.success(cached.get(), "Order retrieved from idempotent cache"));
+            }
+
+            boolean lockAcquired = idempotencyService.acquireProcessingLock(idempotencyKey, Duration.ofSeconds(30));
+            if (!lockAcquired) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("Concurrent checkout with this Idempotency-Key is currently in progress"));
+            }
+        }
+
+        try {
+            OrderResponse response = orderService.checkout(userId, request);
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                idempotencyService.saveResponse(idempotencyKey, response, Duration.ofHours(24));
+            }
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.created(response, "Order placed and confirmed successfully"));
+        } catch (RuntimeException ex) {
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                idempotencyService.releaseProcessingLock(idempotencyKey);
+            }
+            throw ex;
+        }
     }
 
     @GetMapping("/{id}")

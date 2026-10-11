@@ -10,46 +10,109 @@ import { Category, Product } from '../../models/catalog.model';
 import { Order } from '../../models/order.model';
 import { User } from '../../models/auth.model';
 
-type AdminTab = 'orders' | 'users' | 'inventory' | 'site-view';
+type AdminTab = 'orders' | 'users' | 'inventory';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   template: `
-    <div class="container py-3">
-      <!-- Header -->
-      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <div>
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge bg-danger px-2 py-1 small fw-bold">ADMIN CONSOLE</span>
-            <h2 class="fw-extrabold text-white m-0">Operations &amp; Platform Control</h2>
+    <!-- Dedicated Premium Admin Top Header: Brand, 3 Core Operational Views, and Quick Actions -->
+    <header class="admin-top-header sticky-top py-2 px-3 px-xl-4 mb-4 border shadow-lg mx-2 mx-md-3 mt-2 rounded-3"
+            style="background: #0b1120 !important; backdrop-filter: blur(16px); z-index: 1040; border-color: rgba(255, 255, 255, 0.12) !important; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6) !important;">
+      <div class="container-fluid d-flex justify-content-between align-items-center gap-3 p-0">
+        
+        <!-- Left: Brand & Admin Console Badge -->
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <div class="d-flex align-items-center justify-content-center rounded-2 shadow-sm" 
+               style="width: 36px; height: 36px; background: linear-gradient(135deg, #ef4444, #b91c1c);">
+            <i class="bi bi-shield-lock-fill fs-5 text-white"></i>
           </div>
-          <p class="text-muted small mb-0">Monitor customer transactions, user accounts, warehouse inventory, and live storefront appearance</p>
+          <div class="d-flex flex-column" style="line-height: 1.1;">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fw-extrabold fs-5 text-white tracking-tight">Order<span style="color: #ffa41c;">Fleet</span></span>
+              <span class="badge bg-danger px-2 py-0 small fw-bold" style="font-size: 0.62rem;">ADMIN CONSOLE</span>
+            </div>
+            <span class="text-muted fw-bold" style="font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;">
+              Platform Operations
+            </span>
+          </div>
         </div>
 
-        <div class="d-flex align-items-center gap-2">
+        <!-- Center: The 3 Operational Views Tabs -->
+        <div class="d-flex align-items-center gap-1 p-1 rounded-3 flex-shrink-0" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.08);">
+          <!-- Tab 1: Customer Orders -->
+          <button class="btn btn-sm py-1 px-3 d-flex align-items-center gap-2 rounded-2 border-0 transition-all"
+                  [class.btn-primary]="activeTab() === 'orders'"
+                  [class.text-white]="activeTab() === 'orders'"
+                  [class.text-white-50]="activeTab() !== 'orders'"
+                  (click)="setActiveTab('orders')">
+            <i class="bi bi-receipt-cutoff"></i>
+            <span class="fw-bold">Customer Orders</span>
+            <span class="badge rounded-pill small" 
+                  [class.bg-white]="activeTab() === 'orders'" 
+                  [class.text-dark]="activeTab() === 'orders'" 
+                  [class.bg-secondary]="activeTab() !== 'orders'">{{ orders().length }}</span>
+          </button>
+
+          <!-- Tab 2: Registered Accounts -->
+          <button class="btn btn-sm py-1 px-3 d-flex align-items-center gap-2 rounded-2 border-0 transition-all"
+                  [class.btn-primary]="activeTab() === 'users'"
+                  [class.text-white]="activeTab() === 'users'"
+                  [class.text-white-50]="activeTab() !== 'users'"
+                  (click)="setActiveTab('users')">
+            <i class="bi bi-people"></i>
+            <span class="fw-bold">Registered Accounts</span>
+            <span class="badge rounded-pill small"
+                  [class.bg-white]="activeTab() === 'users'" 
+                  [class.text-dark]="activeTab() === 'users'" 
+                  [class.bg-secondary]="activeTab() !== 'users'">{{ users().length }}</span>
+          </button>
+
+          <!-- Tab 3: Inventory & Stock -->
+          <button class="btn btn-sm py-1 px-3 d-flex align-items-center gap-2 rounded-2 border-0 transition-all"
+                  [class.btn-primary]="activeTab() === 'inventory'"
+                  [class.text-white]="activeTab() === 'inventory'"
+                  [class.text-white-50]="activeTab() !== 'inventory'"
+                  (click)="setActiveTab('inventory')">
+            <i class="bi bi-box-seam"></i>
+            <span class="fw-bold">Inventory &amp; Stock</span>
+            <span class="badge rounded-pill small"
+                  [class.bg-white]="activeTab() === 'inventory'" 
+                  [class.text-dark]="activeTab() === 'inventory'" 
+                  [class.bg-secondary]="activeTab() !== 'inventory'">{{ products().length }}</span>
+          </button>
+        </div>
+
+        <!-- Right: Operational Actions -->
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a routerLink="/catalog" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1 py-1 px-3">
+            <i class="bi bi-shop"></i>
+            <span class="d-none d-sm-inline">Storefront</span>
+          </a>
           @if (activeTab() === 'inventory') {
-            <button class="btn btn-amazon-primary d-flex align-items-center gap-2" (click)="showAddProductModal.set(true)">
+            <button class="btn btn-amazon-primary btn-sm d-flex align-items-center gap-1 py-1 px-3 shadow-sm" (click)="showAddProductModal.set(true)">
               <i class="bi bi-plus-circle-fill"></i>
               <span>Add SKU</span>
             </button>
           }
-          <a routerLink="/catalog" class="btn btn-glass d-flex align-items-center gap-2">
-            <i class="bi bi-shop text-warning"></i>
-            <span>Customer Storefront</span>
-          </a>
-          <button class="btn btn-glass d-flex align-items-center gap-2" (click)="refreshAllData()">
+          <button class="btn btn-glass btn-sm py-1 px-3 d-flex align-items-center gap-1 text-white-50" (click)="refreshAllData()" title="Refresh All Data">
             <i class="bi bi-arrow-clockwise"></i>
-            <span>Refresh</span>
+            <span class="d-none d-lg-inline">Refresh</span>
           </button>
-          <button class="btn btn-outline-danger d-flex align-items-center gap-2" (click)="logout()">
+          <div class="d-none d-md-flex align-items-center gap-2 px-2 py-1 rounded-pill" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25);">
+            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center fw-bold" style="width: 22px; height: 22px; font-size: 0.7rem;">A</div>
+            <span class="text-white small fw-semibold" style="font-size: 0.78rem;">Admin</span>
+          </div>
+          <button class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 py-1 px-3" (click)="logout()">
             <i class="bi bi-box-arrow-right"></i>
             <span>Sign Out</span>
           </button>
         </div>
       </div>
+    </header>
 
+    <div class="container-fluid px-3 px-md-4 py-2">
       <!-- Real-time KPI Metric Cards (Always Visible) -->
       <div class="row g-3 mb-4">
         <!-- 1. Gross Platform Revenue -->
@@ -121,55 +184,6 @@ type AdminTab = 'orders' | 'users' | 'inventory' | 'site-view';
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- 4 View Navigation Tabs -->
-      <div class="glass-panel p-2 mb-4">
-        <ul class="nav nav-pills nav-fill gap-2">
-          <!-- View 1: Customer Orders -->
-          <li class="nav-item">
-            <button class="nav-link text-white py-2 px-3 fw-bold d-flex align-items-center justify-content-center gap-2"
-                    [class.active]="activeTab() === 'orders'"
-                    (click)="setActiveTab('orders')">
-              <i class="bi bi-receipt-cutoff"></i>
-              <span>Customer Orders</span>
-              <span class="badge bg-secondary rounded-pill small">{{ orders().length }}</span>
-            </button>
-          </li>
-
-          <!-- View 2: Registered Customers -->
-          <li class="nav-item">
-            <button class="nav-link text-white py-2 px-3 fw-bold d-flex align-items-center justify-content-center gap-2"
-                    [class.active]="activeTab() === 'users'"
-                    (click)="setActiveTab('users')">
-              <i class="bi bi-people"></i>
-              <span>Registered Accounts</span>
-              <span class="badge bg-secondary rounded-pill small">{{ users().length }}</span>
-            </button>
-          </li>
-
-          <!-- View 3: Inventory & Stock Management -->
-          <li class="nav-item">
-            <button class="nav-link text-white py-2 px-3 fw-bold d-flex align-items-center justify-content-center gap-2"
-                    [class.active]="activeTab() === 'inventory'"
-                    (click)="setActiveTab('inventory')">
-              <i class="bi bi-box-seam"></i>
-              <span>Inventory &amp; Stock</span>
-              <span class="badge bg-secondary rounded-pill small">{{ products().length }}</span>
-            </button>
-          </li>
-
-          <!-- View 4: Live Storefront Preview (Site View) -->
-          <li class="nav-item">
-            <button class="nav-link text-white py-2 px-3 fw-bold d-flex align-items-center justify-content-center gap-2"
-                    [class.active]="activeTab() === 'site-view'"
-                    (click)="setActiveTab('site-view')">
-              <i class="bi bi-eye"></i>
-              <span>Live Site Preview</span>
-              <span class="badge bg-success bg-opacity-75 rounded-pill small">Customer View</span>
-            </button>
-          </li>
-        </ul>
       </div>
 
       <!-- ========================================== -->
@@ -486,10 +500,11 @@ type AdminTab = 'orders' | 'users' | 'inventory' | 'site-view';
                       </td>
                       <!-- Delete / Deactivate Button -->
                       <td class="text-end">
-                        <button class="btn btn-link text-danger p-0 border-0" 
+                        <button class="btn btn-outline-danger btn-sm px-2 py-1 rounded-2 d-inline-flex align-items-center gap-1 shadow-sm" 
                                 title="Deactivate / Remove product from catalog"
-                                (click)="deleteProduct(product)">
-                          <i class="bi bi-trash fs-5"></i>
+                                (click)="openDeleteConfirm(product)">
+                          <i class="bi bi-trash3"></i>
+                          <span class="small fw-semibold">Delete</span>
                         </button>
                       </td>
                     </tr>
@@ -501,92 +516,60 @@ type AdminTab = 'orders' | 'users' | 'inventory' | 'site-view';
         </div>
       }
 
-      <!-- ========================================== -->
-      <!-- VIEW 4: LIVE STOREFRONT PREVIEW (SITE VIEW) -->
-      <!-- ========================================== -->
-      @if (activeTab() === 'site-view') {
-        <div class="glass-panel p-4">
-          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-bottom border-secondary pb-3 mb-4">
-            <div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-success small"><i class="bi bi-eye-fill me-1"></i>LIVE SIMULATION</span>
-                <h5 class="fw-bold text-white m-0">Storefront Appearance ("Customer View")</h5>
+      <!-- In-App Deactivate Product Confirmation Modal -->
+      @if (productToDelete(); as p) {
+        <div class="modal-backdrop-custom" (click)="cancelDelete()">
+          <div class="glass-panel p-4 shadow-lg border border-danger border-opacity-50" 
+               style="max-width: 480px; width: 92%; background: rgba(17, 24, 39, 0.96); border-radius: 16px;"
+               (click)="$event.stopPropagation()">
+            
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
+                <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
               </div>
-              <div class="text-muted small mt-1">This is exactly how items, badges, pricing, and stock urgency appear to customer shoppers</div>
+              <div class="flex-grow-1">
+                <h5 class="fw-bold text-white mb-1">Deactivate Product?</h5>
+                <p class="text-muted small mb-0">
+                  This item will be deactivated and immediately removed from the public customer storefront.
+                </p>
+              </div>
             </div>
 
-            <!-- Preview Search & Category Filter Bar -->
-            <div class="d-flex gap-2">
-              <input type="text" class="form-control form-control-sm" placeholder="Filter preview items..."
-                     [(ngModel)]="previewSearchQuery" style="max-width: 200px;">
-              <select class="form-select form-select-sm" [(ngModel)]="selectedPreviewCategory" style="max-width: 160px;">
-                <option value="">All Categories</option>
-                @for (cat of categories(); track cat.id) {
-                  <option [value]="cat.name">{{ cat.name }}</option>
-                }
-              </select>
-            </div>
-          </div>
-
-          <!-- Product Card Grid Preview -->
-          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-            @for (p of filteredPreviewProducts(); track p.id) {
-              <div class="col">
-                <div class="card h-100 product-card border-0 bg-dark text-white shadow-sm" style="border: 1px solid #334155 !important;">
-                  <!-- Product Image / Mock Placeholder with Category Theme -->
-                  <div class="position-relative overflow-hidden text-center py-4 rounded-top"
-                       style="background: linear-gradient(145deg, #1e293b, #0f172a); min-height: 160px;">
-                    <i class="bi bi-box-seam text-warning" style="font-size: 3.5rem;"></i>
-                    <span class="badge bg-secondary position-absolute top-0 start-0 m-2 small">
-                      {{ p.categoryName }}
-                    </span>
-                    @if (p.availableStock <= 3 && p.availableStock > 0) {
-                      <span class="badge bg-danger position-absolute top-0 end-0 m-2 small">
-                        Only {{ p.availableStock }} left!
-                      </span>
-                    }
-                  </div>
-
-                  <!-- Card Body -->
-                  <div class="card-body p-3 d-flex flex-column">
-                    <h6 class="fw-bold text-white text-truncate mb-1" [title]="p.title">{{ p.title }}</h6>
-                    <div class="text-muted small mb-2 font-monospace" style="font-size: 0.72rem;">SKU: {{ p.sku }}</div>
-                    
-                    <p class="text-white-50 small flex-grow-1 line-clamp-2" style="font-size: 0.8rem; min-height: 2.4rem;">
-                      {{ p.description || 'Premium e-commerce catalog item ready for instant delivery.' }}
-                    </p>
-
-                    <!-- Price & Urgency -->
-                    <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary">
-                      <div>
-                        <span class="fs-5 fw-extrabold text-white">\${{ p.price.toFixed(2) }}</span>
-                        <span class="text-muted text-decoration-line-through small ms-2">\${{ (p.price * 1.25).toFixed(2) }}</span>
-                      </div>
-
-                      @if (p.availableStock <= 0) {
-                        <span class="badge bg-danger">Out of Stock</span>
-                      } @else if (p.availableStock <= 3) {
-                        <span class="badge bg-warning text-dark fw-bold">Urgent</span>
-                      } @else {
-                        <span class="badge bg-success bg-opacity-25 text-success border border-success">In Stock</span>
-                      }
-                    </div>
-                  </div>
+            <!-- Product Summary Card -->
+            <div class="p-3 rounded-3 mb-4" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="fw-bold text-white mb-1">{{ p.title }}</div>
+                  <div class="text-muted small font-monospace">SKU: <span class="text-info">{{ p.sku }}</span></div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-bold text-warning">\${{ p.price.toFixed(2) }}</div>
+                  <span class="badge bg-secondary small">{{ p.categoryName || 'Product' }}</span>
                 </div>
               </div>
-            }
-          </div>
-
-          @if (filteredPreviewProducts().length === 0) {
-            <div class="text-center py-5">
-              <i class="bi bi-search fs-2 text-muted"></i>
-              <p class="text-muted mt-2">No products match your preview filter.</p>
             </div>
-          }
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-glass px-3" [disabled]="deletingProduct()" (click)="cancelDelete()">
+                Cancel
+              </button>
+              <button type="button" class="btn btn-danger px-4 d-inline-flex align-items-center gap-2 fw-semibold shadow"
+                      [disabled]="deletingProduct()" 
+                      (click)="confirmDelete()">
+                @if (deletingProduct()) {
+                  <span class="spinner-border spinner-border-sm"></span> Deactivating...
+                } @else {
+                  <i class="bi bi-trash3-fill"></i> Deactivate Product
+                }
+              </button>
+            </div>
+          </div>
         </div>
       }
     </div>
-  `
+  `,
 })
 export class AdminComponent implements OnInit {
   private catalogService = inject(CatalogService);
@@ -610,10 +593,8 @@ export class AdminComponent implements OnInit {
   loadingUsers = signal(false);
   showAddProductModal = signal(false);
   submittingProduct = signal(false);
-
-  // Storefront preview filters
-  previewSearchQuery = '';
-  selectedPreviewCategory = '';
+  productToDelete = signal<Product | null>(null);
+  deletingProduct = signal(false);
 
   // New product form model
   newProduct: CreateProductDto = {
@@ -726,17 +707,6 @@ export class AdminComponent implements OnInit {
     return this.products().filter(p => (p.availableStock || 0) <= 3).length;
   }
 
-  // Filtered products for Tab 4 Preview
-  filteredPreviewProducts(): Product[] {
-    return this.products().filter(p => {
-      const matchesSearch = !this.previewSearchQuery || 
-        p.title.toLowerCase().includes(this.previewSearchQuery.toLowerCase()) ||
-        p.sku.toLowerCase().includes(this.previewSearchQuery.toLowerCase());
-      const matchesCategory = !this.selectedPreviewCategory || p.categoryName === this.selectedPreviewCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }
-
   // Inventory actions
   submitNewProduct(): void {
     if (!this.newProduct.sku || !this.newProduct.title || !this.newProduct.price) {
@@ -779,20 +749,45 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  deleteProduct(product: Product): void {
-    if (!confirm(`Are you sure you want to deactivate "${product.title}" (${product.sku})? It will be removed from the public customer catalog.`)) {
-      return;
+  openDeleteConfirm(product: Product): void {
+    this.productToDelete.set(product);
+  }
+
+  cancelDelete(): void {
+    if (!this.deletingProduct()) {
+      this.productToDelete.set(null);
     }
+  }
+
+  confirmDelete(): void {
+    const product = this.productToDelete();
+    if (!product) return;
+
+    this.deletingProduct.set(true);
+
+    // Optimistic UI update: instantly hide from UI
+    const originalList = this.products();
+    this.products.update(list => list.filter(p => p.id !== product.id));
 
     this.catalogService.deleteProduct(product.id).subscribe({
       next: () => {
-        this.toastService.warning('Product Deactivated', `"${product.title}" has been removed from customer catalog.`);
+        this.toastService.warning('Product Deactivated', `"${product.title}" (${product.sku}) removed from catalog.`);
+        this.productToDelete.set(null);
+        this.deletingProduct.set(false);
         this.loadProducts();
       },
       error: (err) => {
+        // Rollback list if delete failed
+        this.products.set(originalList);
         this.toastService.error('Deactivation Failed', err.error?.message || 'Failed to deactivate product.');
+        this.productToDelete.set(null);
+        this.deletingProduct.set(false);
       }
     });
+  }
+
+  deleteProduct(product: Product): void {
+    this.openDeleteConfirm(product);
   }
 
   logout(): void {

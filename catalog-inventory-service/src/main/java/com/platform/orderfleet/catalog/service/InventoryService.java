@@ -11,6 +11,7 @@ import com.platform.orderfleet.catalog.repository.InventoryItemRepository;
 import com.platform.orderfleet.catalog.repository.InventoryReservationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,11 +49,12 @@ public class InventoryService {
     }
 
     @Transactional
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public StockReservationResponse reserveStock(StockReservationRequest request) {
         log.info("Processing atomic stock reservation for Order ID: {}, Product ID: {}, Qty: {}",
                 request.orderId(), request.productId(), request.quantity());
 
-        InventoryItem item = inventoryItemRepository.findByProductId(request.productId())
+        InventoryItem item = inventoryItemRepository.findByProductIdWithPessimisticLock(request.productId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product ID not found in inventory: " + request.productId()));
 
         if (item.getAvailableQuantity() < request.quantity()) {
@@ -92,6 +94,7 @@ public class InventoryService {
     }
 
     @Transactional
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public void releaseStock(StockReleaseRequest request) {
         log.info("Releasing stock reservation: {}", request.reservationCode());
 
@@ -102,7 +105,7 @@ public class InventoryService {
             throw new InvalidReservationStateException("Cannot release reservation in status: " + reservation.getStatus());
         }
 
-        InventoryItem item = inventoryItemRepository.findByProductId(reservation.getProductId())
+        InventoryItem item = inventoryItemRepository.findByProductIdWithPessimisticLock(reservation.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found for product: " + reservation.getProductId()));
 
         // Return reserved units back to available pool
@@ -118,6 +121,7 @@ public class InventoryService {
     }
 
     @Transactional
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public void confirmReservation(String reservationCode) {
         log.info("Confirming stock deduction for reservation: {}", reservationCode);
 
@@ -128,7 +132,7 @@ public class InventoryService {
             throw new InvalidReservationStateException("Cannot confirm reservation in status: " + reservation.getStatus());
         }
 
-        InventoryItem item = inventoryItemRepository.findByProductId(reservation.getProductId())
+        InventoryItem item = inventoryItemRepository.findByProductIdWithPessimisticLock(reservation.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found for product: " + reservation.getProductId()));
 
         // Units have officially shipped/sold: decrement reserved pool
@@ -142,10 +146,11 @@ public class InventoryService {
     }
 
     @Transactional
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public InventoryResponse updateStock(StockUpdateRequest request) {
         log.info("Admin adjusting stock for product ID: {}, Delta: {}", request.productId(), request.quantityDelta());
 
-        InventoryItem item = inventoryItemRepository.findByProductId(request.productId())
+        InventoryItem item = inventoryItemRepository.findByProductIdWithPessimisticLock(request.productId())
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found for product: " + request.productId()));
 
         int newAvailable = item.getAvailableQuantity() + request.quantityDelta();
